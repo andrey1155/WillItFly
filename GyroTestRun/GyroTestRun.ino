@@ -62,7 +62,7 @@ void Calculate() {
     gyrOut = FilterRot(gyrOut); // Фильтр от шума  
     Vector rot = CalculateRotation(gyrOut, accOut); // Интегрирование угловых скоростей
     Vector ru  = CalculateRotationOutput(rot,gyrOut); // Управляющий сигнал по углам
-  
+    CalculateEngines(0, ru);
     
     #ifdef LOG
     // Вывод данных каждые 15 тиков, если LOG определён
@@ -186,6 +186,42 @@ float CalculateHeight(float A1, float A2){
     return HPD.Integrate(asyncH.Integrate(dh,dt),dt) + 0.1f*intHu.Integrate(dh,dt); // Выход с ПИД-регулятора
 }
 
+
+
+// Ограничивает минимальное значение X
+int bound(int X, int low, int high){
+    if(X < low)
+      X = low;
+  
+    return X;
+}
+
+
+// Управление двигателем
+void CalculateEngines(float heightInput, Vector r){
+  
+    // Скорости вращения для каждого из 4 винтов
+    float w1 = 0.25f * heightInput - KL * r.GetZ() - KA * r.GetY();
+    float w2 = 0.25f * heightInput - KL * r.GetX() + KA * r.GetY();
+    float w4 = 0.25f * heightInput + KL * r.GetZ() - KA * r.GetY();
+    float w3 = 0.25f * heightInput + KL * r.GetX() + KA * r.GetY();
+  
+    // Расчёт значения подаваемого на ШИМ
+    int u1 = static_cast<int>(KENG * w1);
+    int u2 = static_cast<int>(KENG * w2);
+    int u3 = static_cast<int>(KENG * w3);
+    int u4 = static_cast<int>(KENG * w4);
+
+    u1 = bound(u1,0,255);
+    u2 = bound(u2,0,255);
+    u3 = bound(u3,0,255);
+    u4 = bound(u4,0,255);
+    
+    analogWrite(SPEED_1, u1);
+    analogWrite(SPEED_2, u2);
+    analogWrite(SPEED_3, u3);
+    analogWrite(SPEED_4, u4);
+}
 
 
 // Ограничивает минимальное значение X
